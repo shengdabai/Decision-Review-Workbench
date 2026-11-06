@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>决策复查工作台</title>
+  <style>
+/* TOKENS
+   Primitive → semantic tokens. Responsive breakpoints: 980px and 620px.
+   All authored visual design values in this file originate here. */
+:root {
+  --ink-950: #10231f; --ink-800: #29433c; --ink-650: #526b64; --paper-50: #f4f8f7; --paper-0: #ffffff;
+  --green-800: #135b4c; --green-700: #18705e; --green-100: #dff1eb; --amber-700: #8a4e0c; --amber-100: #fff0cf;
+  --red-700: #a12b32; --red-100: #fde8e9; --line-200: #cbdad6; --focus-500: #1c6ed2;
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-5: 1.5rem; --space-6: 2rem; --space-7: 3rem;
+  --font-sm: 0.875rem; --font-base: 1rem; --font-lg: 1.125rem; --font-xl: 1.5rem; --font-2xl: clamp(1.8rem, 4vw, 3rem);
+  --line-tight: 1.1; --line-normal: 1.55; --radius-sm: 0.35rem; --radius-md: 0.7rem; --radius-lg: 1rem;
+  --shadow-panel: 0 0.5rem 1.5rem rgb(16 35 31 / 0.08); --border: 1px; --control-min: 2.5rem; --content-max: 96rem; --measure-readable: 52rem; --textarea-min: 6.5rem; --form-column-min: 18rem; --field-error-min: 1.2em;
+  --weight-bold: 700; --weight-heavy: 800; --disabled-opacity: 0.55; --layer-skip: 2; --accessibility-pixel: 1px; --accessibility-clip: 50%; --layout-form-share: 0.75fr; --layout-list-share: 1.25fr;
+  --metrics-columns-wide: 4; --metrics-columns-mid: 2; --field-columns-wide: 2;
+  --motion-fast: 140ms; --ease: ease-out;
+  --color-text: var(--ink-950); --color-muted: var(--ink-650); --color-bg: var(--paper-50); --color-panel: var(--paper-0);
+  --color-action: var(--green-700); --color-action-hover: var(--green-800); --color-soft: var(--green-100); --color-border: var(--line-200);
+  --color-warning: var(--amber-700); --color-warning-bg: var(--amber-100); --color-danger: var(--red-700); --color-danger-bg: var(--red-100); --color-focus: var(--focus-500);
+}
+* { box-sizing: border-box; }
+html { background: var(--color-bg); color: var(--color-text); font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif; font-size: var(--font-base); line-height: var(--line-normal); }
+body { margin: 0; min-width: 0; }
+button, input, textarea, select { color: inherit; font: inherit; }
+button, input, select { min-height: var(--control-min); }
+button { border: 0; border-radius: var(--radius-sm); background: var(--color-action); color: var(--paper-0); cursor: pointer; padding: var(--space-2) var(--space-4); transition: background var(--motion-fast) var(--ease); }
+button:hover { background: var(--color-action-hover); }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, a:focus-visible { outline: var(--space-1) solid var(--color-focus); outline-offset: var(--space-1); }
+button[disabled] { cursor: not-allowed; opacity: var(--disabled-opacity); }
+input, textarea, select { width: 100%; border: var(--border) solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-panel); padding: var(--space-3); }
+textarea { min-height: var(--textarea-min); resize: vertical; }
+label { display: block; font-weight: var(--weight-bold); margin-top: var(--space-4); }
+h1, h2, h3, p { margin-top: 0; }
+h1 { font-size: var(--font-2xl); line-height: var(--line-tight); margin-bottom: var(--space-2); }
+h2 { font-size: var(--font-xl); margin-bottom: var(--space-2); }
+h3 { font-size: var(--font-lg); }
+small, .status, .field-error { color: var(--color-muted); }
+.skip-link { position: absolute; left: var(--space-3); top: calc(-1 * var(--space-7)); background: var(--color-panel); padding: var(--space-2); z-index: var(--layer-skip); }
+.skip-link:focus { top: var(--space-3); }
+.topbar { max-width: var(--content-max); margin: 0 auto; padding: var(--space-6) var(--space-5) var(--space-5); display: flex; gap: var(--space-5); justify-content: space-between; align-items: flex-start; }
+.topbar p { max-width: var(--measure-readable); color: var(--color-muted); }
+.status-stack { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: flex-end; }
+.badge { background: var(--color-soft); border-radius: var(--radius-sm); color: var(--color-action-hover); padding: var(--space-2) var(--space-3); font-weight: var(--weight-bold); }
+.badge-warning { background: var(--color-warning-bg); color: var(--color-warning); }
+.workspace { max-width: var(--content-max); margin: 0 auto; padding: 0 var(--space-5) var(--space-7); }
+.metrics { display: grid; grid-template-columns: repeat(var(--metrics-columns-wide), minmax(0, 1fr)); gap: var(--space-3); margin-bottom: var(--space-5); }
+.metrics article, .panel { background: var(--color-panel); border: var(--border) solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-panel); }
+.metrics article { padding: var(--space-4); display: grid; gap: var(--space-1); }
+.metrics strong { color: var(--color-action); font-size: var(--font-xl); }
+.metrics span { font-weight: var(--weight-bold); }
+.panel { padding: var(--space-5); margin-bottom: var(--space-5); }
+.action-panel { display: grid; gap: var(--space-3); }
+.button-row { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
+.button-secondary { background: var(--color-soft); color: var(--color-action-hover); border: var(--border) solid var(--color-border); }
+.button-secondary:hover { background: var(--color-border); }
+.button-danger { background: var(--color-danger); }
+.button-danger:hover { background: var(--color-danger); }
+.layout { display: grid; grid-template-columns: minmax(var(--form-column-min), var(--layout-form-share)) minmax(0, var(--layout-list-share)); gap: var(--space-5); align-items: start; }
+.field-grid { display: grid; grid-template-columns: repeat(var(--field-columns-wide), minmax(0, 1fr)); gap: var(--space-3); }
+.field-error { min-height: var(--field-error-min); margin: var(--space-1) 0 0; color: var(--color-danger); font-size: var(--font-sm); }
+[aria-invalid="true"] { border-color: var(--color-danger); background: var(--color-danger-bg); }
+.section-heading { display: flex; justify-content: space-between; align-items: start; gap: var(--space-4); }
+.filters { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.filters button { background: var(--color-soft); color: var(--color-action-hover); }
+.filters button[aria-pressed="true"] { background: var(--color-action); color: var(--paper-0); }
+.decision-list { display: grid; gap: var(--space-3); }
+.decision-card { border: var(--border) solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); }
+.decision-card header { display: flex; justify-content: space-between; align-items: start; gap: var(--space-3); }
+.decision-card dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-1) var(--space-3); }
+.decision-card dt { color: var(--color-muted); }
+.decision-card dd { margin: 0; overflow-wrap: anywhere; }
+.status-open { color: var(--color-action); } .status-overdue { color: var(--color-danger); } .status-resolved { color: var(--color-muted); }
+.review-form, .confirm-box { background: var(--color-bg); border: var(--border) solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); margin-top: var(--space-4); }
+.confirm-box { background: var(--color-danger-bg); }
+.empty-state { text-align: center; color: var(--color-muted); border: var(--border) dashed var(--color-border); border-radius: var(--radius-md); padding: var(--space-7) var(--space-4); }
+.legacy-note { border-top: var(--border) solid var(--color-border); padding-top: var(--space-4); margin-top: var(--space-4); }
+.legacy-note pre { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--color-bg); padding: var(--space-3); border-radius: var(--radius-sm); }
+.visually-hidden { position: absolute; width: var(--accessibility-pixel); height: var(--accessibility-pixel); overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(var(--accessibility-clip)); white-space: nowrap; }
+@media (max-width: 980px) { .metrics { grid-template-columns: repeat(var(--metrics-columns-mid), minmax(0, 1fr)); } .layout { grid-template-columns: 1fr; } }
+@media (max-width: 620px) { .topbar, .section-heading, .decision-card header { flex-direction: column; } .topbar { padding: var(--space-5) var(--space-4); } .workspace { padding: 0 var(--space-4) var(--space-6); } .metrics, .field-grid { grid-template-columns: 1fr; } .panel { padding: var(--space-4); } .button-row button { width: 100%; } .filters button { width: auto; } .decision-card dl { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { button { transition: none; } }
+
+</style>
+<!-- Generated from local source; core.js:bf2b5945419d82bf0e8479fee7c13fe5087571870a5d340ff1ed9bf0cfb122b2 sample-data.js:8d53f89d46833c5ee418e084deaf79d3bf1f1aa00865e1cf7196f3b71be8663c app.js:71cbadd7f6ef788d3b82997af272af6ed0450b15f5d817eb096f8c3175a29c35 -->
+</head>
+<body>
+  <a class="skip-link" href="#workspace">跳到工作区</a>
+  <header class="topbar">
+    <div>
+      <h1>决策复查工作台</h1>
+      <p>本机离线使用。先记录可检验问题和事前概率。到期后再追加实际结果，原预测不会被覆盖。</p>
+    </div>
+    <div class="status-stack">
+      <span id="todayBadge" class="badge"></span>
+      <span id="sampleBadge" class="badge badge-warning" hidden>当前数据：包含合成示例</span>
+    </div>
+  </header>
+
+  <main id="workspace" class="workspace">
+    <section class="metrics" aria-label="统计口径">
+      <article><strong id="totalMetric">0</strong><span>全部决策</span><small>包含待复查和已复查</small></article>
+      <article><strong id="dueMetric">0</strong><span>到期未复查</span><small>复查日早于基准日</small></article>
+      <article><strong id="resolvedMetric">0</strong><span>已复查</span><small>仅有二元实际结果的记录</small></article>
+      <article><strong id="brierMetric">—</strong><span>真实记录 Brier 分数</span><small id="brierHelp">无已复查的用户记录；合成示例不进入统计</small></article>
+    </section>
+
+    <section class="panel action-panel" aria-labelledby="actionsTitle">
+      <div><h2 id="actionsTitle">数据与恢复</h2><p>数据只保存在此浏览器。重要记录请定期导出 JSON 备份。</p></div>
+      <div class="button-row">
+        <button id="loadSample" type="button" class="button-secondary">载入合成示例</button>
+        <button id="importTrigger" type="button" class="button-secondary">导入 JSON 备份</button>
+        <input id="importFile" class="visually-hidden" type="file" accept="application/json,.json" tabindex="-1">
+        <button id="exportJson" type="button">导出全部数据 JSON</button>
+        <button id="exportMarkdown" type="button">导出决策记录 Markdown</button>
+        <button id="clearAll" type="button" class="button-danger">清空全部本机数据</button>
+      </div>
+      <div id="pendingAction" class="confirm-box" hidden role="region" aria-live="polite">
+        <p id="pendingMessage"></p>
+        <div class="button-row"><button id="confirmAction" type="button" class="button-danger">确认替换</button><button id="cancelAction" type="button" class="button-secondary">取消</button></div>
+      </div>
+      <p id="storageStatus" class="status" role="status">正在读取本机记录…</p>
+    </section>
+
+    <div class="layout">
+      <section class="panel" aria-labelledby="newTitle">
+        <h2 id="newTitle">记录事前预测</h2>
+        <p>概率可以是 0% 或 100%，但必须写清理由。保存后修改会形成新版本。</p>
+        <form id="decisionForm" novalidate>
+          <label for="title">标题</label><input id="title" name="title" maxlength="200" required><p class="field-error" id="titleError"></p>
+          <label for="question">可检验问题</label><textarea id="question" name="question" maxlength="1000" required></textarea><p class="field-error" id="questionError"></p>
+          <div class="field-grid">
+            <div><label for="probability">事前概率（0–100%）</label><input id="probability" name="probability" type="number" min="0" max="100" step="1" required><p class="field-error" id="probabilityError"></p></div>
+            <div><label for="dueDate">复查日期</label><input id="dueDate" name="dueDate" type="date" required><p class="field-error" id="dueDateError"></p></div>
+          </div>
+          <label for="reasons">当时的理由</label><textarea id="reasons" name="reasons" maxlength="4000" required></textarea><p class="field-error" id="reasonsError"></p>
+          <label for="evidence">当时可得的证据（可空）</label><textarea id="evidence" name="evidence" maxlength="4000"></textarea><p class="field-error" id="evidenceError"></p>
+          <div class="button-row"><button type="submit">保存事前预测</button><button id="cancelEdit" type="button" class="button-secondary" hidden>取消修改</button></div>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="queueTitle">
+        <div class="section-heading"><div><h2 id="queueTitle">复查队列</h2><p id="queueSummary">尚无记录。</p></div><div class="filters" role="group" aria-label="筛选决策"><button type="button" data-filter="all" aria-pressed="true">全部</button><button type="button" data-filter="overdue" aria-pressed="false">到期</button><button type="button" data-filter="open" aria-pressed="false">未到期</button><button type="button" data-filter="resolved" aria-pressed="false">已复查</button></div></div>
+        <div id="decisionList" class="decision-list"></div>
+        <div id="emptyState" class="empty-state"><strong>还没有决策记录</strong><p>先在左侧写下一条可检验问题、概率和复查日期。也可以载入合成示例查看完整流程。</p></div>
+      </section>
+    </div>
+
+    <section id="legacyPanel" class="panel" hidden aria-labelledby="legacyTitle">
+      <h2 id="legacyTitle">旧版原文记录</h2>
+      <p>检测到旧研究页保存的 before / after 原文。导入后只作为原文存档，不制造概率、日期或实际结果，也不进入校准统计。</p>
+      <div class="button-row"><button id="migrateLegacy" type="button">导入旧版原文</button><button id="dismissLegacy" type="button" class="button-secondary">本次忽略</button></div>
+      <div id="legacyList"></div>
+    </section>
+  </main>
+
+  <template id="reviewTemplate">
+    <form class="review-form" novalidate>
+      <h3>追加实际结果</h3>
+      <p>只有能判断“发生”或“未发生”时才保存。结果仍未知时，保留在复查队列，不进入校准统计。</p>
+      <div class="field-grid"><div><label>实际结果</label><select name="outcome"><option value="">请选择</option><option value="1">发生</option><option value="0">未发生</option></select></div><div><label>复查日期</label><input name="reviewedOn" type="date"></div></div>
+      <label>复查结论</label><textarea name="summary" maxlength="4000"></textarea>
+      <label>偏差分类</label><select name="bias"></select>
+      <label>下一次检验（可空）</label><textarea name="nextTest" maxlength="4000"></textarea>
+      <p class="field-error form-error"></p>
+      <div class="button-row"><button type="submit">保存实际结果</button><button type="button" data-cancel-review class="button-secondary">取消</button></div>
+    </form>
+  </template>
+
+  <script>
+'use strict';
+
+(function init(root) {
+  const VERSION = 2;
+  const STORAGE_KEY = 'decisionReviewWorkbench.v2';
+  const LEGACY_KEY = 'decision-lab-20261026-v1';
+  const CALENDAR_TIME_ZONE = 'Asia/Shanghai';
+  const BIASES = ['未判断', '信息遗漏', '执行偏差', '过度自信', '锚定', '结果偏差', '外部变化', '其他'];
+
+  function isPlainObject(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  function isDate(value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return false;
+    const date = new Date(`${value}T00:00:00Z`);
+    return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
+  }
+
+  function isIso(value) {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)) return false;
+    const date = new Date(value);
+    return !Number.isNaN(date.valueOf()) && date.toISOString().replace('.000Z', 'Z') === value.replace('.000Z', 'Z');
+  }
+
+  function calendarDay(timestamp) {
+    if (!isIso(timestamp)) return null;
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: CALENDAR_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(timestamp));
+    const values = Object.fromEntries(parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]));
+    return `${values.year}-${values.month}-${values.day}`;
+  }
+
+  function text(value, max) {
+    return typeof value === 'string' && value.trim().length > 0 && value.length <= max;
+  }
+
+  function uniqueIds(items) {
+    if (!Array.isArray(items) || !items.every(isPlainObject)) return false;
+    const ids = items.map((item) => item.id);
+    return ids.length === new Set(ids).size;
+  }
+
+  function validateForecast(value) {
+    if (!isPlainObject(value)) return '预测版本必须是对象。';
+    if (!Number.isInteger(value.probability) || value.probability < 0 || value.probability > 100) return '概率必须是 0–100 的整数。';
+    if (!isDate(value.dueDate)) return '复查日期无效。';
+    if (!text(value.reasons, 4000)) return '预测理由须为 1–4000 字。';
+    if (typeof value.evidence !== 'string' || value.evidence.length > 4000) return '事前证据不能超过 4000 字。';
+    if (!isIso(value.createdAt)) return '预测版本时间无效。';
+    return null;
+  }
+
+  function validateReview(value) {
+    if (value === null) return null;
+    if (!isPlainObject(value)) return '结果复查必须是对象。';
+    if (value.outcome !== 0 && value.outcome !== 1) return '实际结果只能是发生或未发生。';
+    if (!isDate(value.reviewedOn)) return '复查日期无效。';
+    if (!isIso(value.reviewedAt)) return '复查写入时间无效。';
+    if (!text(value.summary, 4000)) return '复查结论须为 1–4000 字。';
+    if (!BIASES.includes(value.bias)) return '偏差分类无效。';
+    if (typeof value.nextTest !== 'string' || value.nextTest.length > 4000) return '下一次检验不能超过 4000 字。';
+    return null;
+  }
+
+  function validateDecision(value, today, now) {
+    if (!isPlainObject(value)) return '决策必须是对象。';
+    if (!text(value.id, 120)) return '决策编号无效。';
+    if (value.origin !== 'user' && value.origin !== 'synthetic') return '记录来源必须是 user 或 synthetic。';
+    if (!text(value.title, 200)) return '标题须为 1–200 字。';
+    if (!text(value.question, 1000)) return '可检验问题须为 1–1000 字。';
+    if (!isIso(value.createdAt)) return '创建时间无效。';
+    if (Date.parse(value.createdAt) > Date.parse(now)) return '创建时间不能晚于当前时间。';
+    if (!Array.isArray(value.forecastVersions) || value.forecastVersions.length < 1 || value.forecastVersions.length > 50) return '预测版本须为 1–50 条。';
+    let previous = value.createdAt;
+    for (const forecast of value.forecastVersions) {
+      const error = validateForecast(forecast);
+      if (error) return error;
+      if (Date.parse(forecast.createdAt) < Date.parse(previous)) return '预测版本时间顺序无效。';
+      if (Date.parse(forecast.createdAt) > Date.parse(now)) return '预测版本时间不能晚于当前时间。';
+      previous = forecast.createdAt;
+    }
+    const reviewError = validateReview(value.review);
+    if (reviewError) return reviewError;
+    if (value.review) {
+      if (value.review.reviewedOn > today) return '复查日期不能晚于基准日。';
+      if (value.review.reviewedOn < calendarDay(previous)) return `复查日期不能早于最后预测版本的${CALENDAR_TIME_ZONE}日历日。`;
+      if (Date.parse(value.review.reviewedAt) < Date.parse(previous)) return '复查写入时间不能早于最后一个预测版本。';
+      if (Date.parse(value.review.reviewedAt) > Date.parse(now)) return '复查写入时间不能晚于当前时间。';
+    }
+    return null;
+  }
+
+  function validateLegacyNote(value) {
+    return isPlainObject(value) && text(value.id, 120) && isIso(value.importedAt) &&
+      typeof value.before === 'string' && value.before.length <= 20000 &&
+      typeof value.after === 'string' && value.after.length <= 20000;
+  }
+
+  function validateState(input, today, now = new Date().toISOString()) {
+    const effectiveToday = today || calendarDay(now);
+    if (!isDate(effectiveToday) || !isIso(now)) return { ok: false, error: '校验基准时间无效。' };
+    if (!isPlainObject(input)) return { ok: false, error: '备份根对象无效。' };
+    if (input.version !== VERSION) return { ok: false, error: `只接受版本 ${VERSION} 的备份。` };
+    if (typeof input.isSample !== 'boolean') return { ok: false, error: '示例标记无效。' };
+    if (!Array.isArray(input.decisions) || input.decisions.length > 5000) return { ok: false, error: '决策列表无效或超过 5000 条。' };
+    if (!input.decisions.every(isPlainObject)) return { ok: false, error: '决策列表包含无效条目。' };
+    if (!uniqueIds(input.decisions)) return { ok: false, error: '决策编号重复。' };
+    for (const decision of input.decisions) {
+      const error = validateDecision(decision, effectiveToday, now);
+      if (error) return { ok: false, error: `决策 ${decision && decision.id ? decision.id : '未知'}：${error}` };
+    }
+    const legacyNotes = input.legacyNotes === undefined ? [] : input.legacyNotes;
+    if (!Array.isArray(legacyNotes) || legacyNotes.length > 100 || !legacyNotes.every(isPlainObject) || !uniqueIds(legacyNotes) || !legacyNotes.every(validateLegacyNote)) {
+      return { ok: false, error: '旧版原文记录无效、重复或超过 100 条。' };
+    }
+    if (legacyNotes.some((note) => Date.parse(note.importedAt) > Date.parse(now))) return { ok: false, error: '旧版原文导入时间不能晚于当前时间。' };
+    const decisions = structuredCloneSafe(input.decisions);
+    return { ok: true, value: { version: VERSION, isSample: decisions.some((item) => item.origin === 'synthetic'), decisions, legacyNotes: structuredCloneSafe(legacyNotes) } };
+  }
+
+  function structuredCloneSafe(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function emptyState() {
+    return { version: VERSION, isSample: false, decisions: [], legacyNotes: [] };
+  }
+
+  function makeId(prefix, now, random) {
+    return `${prefix}-${now.replace(/\D/g, '').slice(0, 17)}-${random}`;
+  }
+
+  function createDecision(input, now = new Date().toISOString(), random = '0001') {
+    const decision = {
+      id: makeId('decision', now, random),
+      origin: 'user',
+      title: String(input.title || '').trim(),
+      question: String(input.question || '').trim(),
+      createdAt: now,
+      forecastVersions: [{
+        probability: Number(input.probability),
+        dueDate: input.dueDate,
+        reasons: String(input.reasons || '').trim(),
+        evidence: String(input.evidence || '').trim(),
+        createdAt: now
+      }],
+      review: null
+    };
+    const error = validateDecision(decision, calendarDay(now), now);
+    return error ? { ok: false, error } : { ok: true, value: decision };
+  }
+
+  function reviseForecast(decision, input, now = new Date().toISOString()) {
+    if (decision.review !== null) return { ok: false, error: '已有结果的决策不能修改事前预测。' };
+    const next = structuredCloneSafe(decision);
+    next.forecastVersions.push({
+      probability: Number(input.probability),
+      dueDate: input.dueDate,
+      reasons: String(input.reasons || '').trim(),
+      evidence: String(input.evidence || '').trim(),
+      createdAt: now
+    });
+    const error = validateDecision(next, calendarDay(now), now);
+    return error ? { ok: false, error } : { ok: true, value: next };
+  }
+
+  function resolveDecision(decision, input, today, now = new Date().toISOString()) {
+    if (decision.review !== null) return { ok: false, error: '这条决策已经记录结果。' };
+    const effectiveToday = today || calendarDay(now);
+    if (!isDate(effectiveToday) || !isIso(now)) return { ok: false, error: '复查基准时间无效。' };
+    const next = structuredCloneSafe(decision);
+    next.review = {
+      outcome: Number(input.outcome),
+      reviewedOn: input.reviewedOn,
+      reviewedAt: now,
+      summary: String(input.summary || '').trim(),
+      bias: input.bias,
+      nextTest: String(input.nextTest || '').trim()
+    };
+    const error = validateDecision(next, effectiveToday, now);
+    return error ? { ok: false, error } : { ok: true, value: next };
+  }
+
+  function activeForecast(decision) {
+    return decision.forecastVersions[decision.forecastVersions.length - 1];
+  }
+
+  function statusOf(decision, today) {
+    if (decision.review) return 'resolved';
+    return activeForecast(decision).dueDate <= today ? 'overdue' : 'open';
+  }
+
+  function filterDecisions(decisions, filter, today) {
+    if (filter === 'all') return decisions.slice();
+    return decisions.filter((decision) => statusOf(decision, today) === filter);
+  }
+
+  function calibration(decisions, origin = 'user') {
+    const eligible = decisions.filter((decision) => decision.review !== null && decision.origin === origin);
+    if (!eligible.length) return { count: 0, brier: null, averageProbability: null, outcomeRate: null };
+    const pairs = eligible.map((decision) => ({ probability: activeForecast(decision).probability / 100, outcome: decision.review.outcome }));
+    const sum = (items) => items.reduce((total, item) => total + item, 0);
+    return {
+      count: pairs.length,
+      brier: sum(pairs.map((pair) => (pair.probability - pair.outcome) ** 2)) / pairs.length,
+      averageProbability: sum(pairs.map((pair) => pair.probability)) / pairs.length,
+      outcomeRate: sum(pairs.map((pair) => pair.outcome)) / pairs.length
+    };
+  }
+
+  function parseBackup(textValue, today, now = new Date().toISOString()) {
+    let parsed;
+    try { parsed = JSON.parse(textValue); } catch (_) { return { ok: false, error: 'JSON 格式无效。' }; }
+    try { return validateState(parsed, today || calendarDay(now), now); } catch (_) { return { ok: false, error: '备份结构无效。' }; }
+  }
+
+  function parseLegacy(textValue, now = new Date().toISOString(), random = '0001') {
+    let parsed;
+    try { parsed = JSON.parse(textValue); } catch (_) { return { ok: false, error: '旧版记录不是有效 JSON。' }; }
+    if (!isPlainObject(parsed) || typeof parsed.before !== 'string' || typeof parsed.after !== 'string') return { ok: false, error: '旧版记录缺少 before 或 after 原文。' };
+    if (!parsed.before.trim() && !parsed.after.trim()) return { ok: false, error: '旧版两份原文都是空白。' };
+    if (parsed.before.length > 20000 || parsed.after.length > 20000) return { ok: false, error: '旧版原文超过 20000 字限制。' };
+    return { ok: true, value: { id: makeId('legacy', now, random), importedAt: now, before: parsed.before, after: parsed.after } };
+  }
+
+  function exportMarkdown(state) {
+    const lines = ['# 决策复查工作台导出', '', state.isSample ? '> 本数据包含合成示例；每条记录的来源单独标注，合成记录不得作为真实证据。' : '> 本机记录：内容由使用者录入，未验证真实性。', ''];
+    state.decisions.forEach((decision) => {
+      lines.push(`## ${decision.title}`, '', `- 编号：${decision.id}`, `- 来源：${decision.origin === 'synthetic' ? '合成示例' : '用户录入'}`, `- 问题：${decision.question}`, `- 决策创建时间：${decision.createdAt}`);
+      decision.forecastVersions.forEach((version, index) => lines.push('', `### 预测版本 ${index + 1}`, '', `- 写入时间：${version.createdAt}`, `- 事前概率：${version.probability}%`, `- 复查日期：${version.dueDate}`, `- 理由：${version.reasons}`, `- 事前证据：${version.evidence || '未填写'}`));
+      if (decision.review) lines.push('', '### 实际结果', '', `- 实际结果：${decision.review.outcome === 1 ? '发生' : '未发生'}`, `- 自报复查日期：${decision.review.reviewedOn}`, `- 复查写入时间：${decision.review.reviewedAt}`, `- 复查结论：${decision.review.summary}`, `- 偏差分类：${decision.review.bias}`, `- 下一次检验：${decision.review.nextTest || '未填写'}`);
+      else lines.push('', '- 实际结果：尚未复查');
+      lines.push('');
+    });
+    if (state.legacyNotes.length) lines.push('## 旧版原文记录', '', `共 ${state.legacyNotes.length} 条。它们没有结构化概率或结果，因此不进入校准统计。`, '');
+    return lines.join('\n');
+  }
+
+  const api = { VERSION, STORAGE_KEY, LEGACY_KEY, CALENDAR_TIME_ZONE, BIASES, calendarDay, emptyState, validateState, createDecision, reviseForecast, resolveDecision, activeForecast, statusOf, filterDecisions, calibration, parseBackup, parseLegacy, exportMarkdown };
+  root.DecisionReviewCore = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+  <script>
+'use strict';
+globalThis.DECISION_REVIEW_SAMPLE = {
+  version: 2,
+  isSample: true,
+  legacyNotes: [],
+  decisions: [
+    {
+      id: 'sample-forecast-1', origin: 'synthetic', title: '合成示例：两周内完成三次真实访谈', question: '在 2026-11-12 前，是否完成至少三次目标用户访谈？', createdAt: '2026-10-29T08:00:00.000Z',
+      forecastVersions: [{ probability: 70, dueDate: '2026-11-12', reasons: '已列出五位可联系对象，并预留三个时段。', evidence: '合成示例：联系人和日程均为虚构。', createdAt: '2026-10-29T08:00:00.000Z' }], review: null
+    },
+    {
+      id: 'sample-resolved-1', origin: 'synthetic', title: '合成示例：本周完成原型验收', question: '在 2026-10-27 前，是否完成手机与桌面两种视口验收？', createdAt: '2026-10-20T08:00:00.000Z',
+      forecastVersions: [{ probability: 80, dueDate: '2026-10-27', reasons: '功能已完成，只剩浏览器检查。', evidence: '合成示例：测试记录为虚构。', createdAt: '2026-10-20T08:00:00.000Z' }],
+      review: { outcome: 1, reviewedOn: '2026-10-27', reviewedAt: '2026-10-27T12:00:00.000Z', summary: '合成示例：两种视口均完成检查。', bias: '未判断', nextTest: '下次事前写明错误态验收。' }
+    }
+  ]
+};
+
+</script>
+  <script>
+'use strict';
+
+(function start() {
+  const core = globalThis.DecisionReviewCore;
+  const byId = (id) => document.getElementById(id);
+  const todayParam = new URLSearchParams(location.search).get('today') || '';
+  const parsedToday = new Date(`${todayParam}T00:00:00Z`);
+  const validToday = /^\d{4}-\d{2}-\d{2}$/.test(todayParam) && !Number.isNaN(parsedToday.valueOf()) && parsedToday.toISOString().slice(0, 10) === todayParam;
+  const today = validToday ? todayParam : core.calendarDay(new Date().toISOString());
+  let state = core.emptyState();
+  let filter = 'all';
+  let editingId = null;
+  let pending = null;
+  let pendingImport = null;
+  let storageFailed = false;
+
+  const form = byId('decisionForm');
+  const fieldIds = ['title', 'question', 'probability', 'dueDate', 'reasons', 'evidence'];
+  const statusLabels = { open: '未到期', overdue: '到期未复查', resolved: '已复查' };
+
+  function el(tag, options = {}, children = []) {
+    const node = document.createElement(tag);
+    Object.entries(options).forEach(([key, value]) => {
+      if (key === 'className') node.className = value;
+      else if (key === 'text') node.textContent = value;
+      else if (key.startsWith('data-')) node.setAttribute(key, value);
+      else node[key] = value;
+    });
+    children.forEach((child) => node.append(child));
+    return node;
+  }
+
+  function randomSuffix() {
+    if (globalThis.crypto && crypto.getRandomValues) return Array.from(crypto.getRandomValues(new Uint16Array(2))).map((n) => n.toString(16)).join('');
+    return Math.random().toString(16).slice(2, 10);
+  }
+
+  function isDraftDirty() {
+    return editingId !== null || fieldIds.some((id) => byId(id).value.trim() !== '');
+  }
+
+  function hasUserData() {
+    return state.decisions.length > 0 || state.legacyNotes.length > 0 || isDraftDirty();
+  }
+
+  function setStatus(message, failed = false) {
+    byId('storageStatus').textContent = message;
+    byId('storageStatus').classList.toggle('field-error', failed);
+  }
+
+  function persist(message = '已保存到此浏览器。') {
+    try {
+      localStorage.setItem(core.STORAGE_KEY, JSON.stringify(state));
+      storageFailed = false;
+      setStatus(message);
+      return true;
+    } catch (_) {
+      storageFailed = true;
+      setStatus('本地保存失败。已提交的当前内存记录仍可导出；表单草稿必须先保存或取消，刷新页面可能丢失本次改动。', true);
+      return false;
+    } finally {
+      updateExportState();
+    }
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(core.STORAGE_KEY);
+      if (raw) {
+        const parsed = core.parseBackup(raw, today, new Date().toISOString());
+        if (!parsed.ok) throw new Error(parsed.error);
+        state = parsed.value;
+        setStatus('已恢复此浏览器保存的记录。');
+      } else setStatus('尚无本机记录。');
+    } catch (error) {
+      storageFailed = true;
+      setStatus(`无法读取已保存数据：${error.message}。当前从空白状态开始。`, true);
+    }
+    detectLegacy();
+    render();
+  }
+
+  function detectLegacy() {
+    try {
+      const raw = localStorage.getItem(core.LEGACY_KEY);
+      const parsed = raw ? core.parseLegacy(raw, new Date().toISOString(), randomSuffix()) : null;
+      byId('legacyPanel').hidden = !(parsed && parsed.ok);
+      if (parsed && parsed.ok) byId('legacyPanel').dataset.note = JSON.stringify(parsed.value);
+    } catch (_) {
+      byId('legacyPanel').hidden = true;
+    }
+  }
+
+  function updateExportState() {
+    const blocked = isDraftDirty();
+    byId('exportJson').disabled = blocked;
+    byId('exportMarkdown').disabled = blocked;
+    byId('exportJson').title = blocked ? '请先保存或取消表单草稿。' : '';
+    byId('exportMarkdown').title = blocked ? '请先保存或取消表单草稿。' : '';
+    if (storageFailed) byId('exportJson').textContent = '导出已提交的当前内存记录 JSON';
+    else byId('exportJson').textContent = '导出全部数据 JSON';
+  }
+
+  function renderMetrics() {
+    const overdue = state.decisions.filter((item) => core.statusOf(item, today) === 'overdue').length;
+    const resolved = state.decisions.filter((item) => item.review).length;
+    const stats = core.calibration(state.decisions);
+    byId('totalMetric').textContent = String(state.decisions.length);
+    byId('dueMetric').textContent = String(overdue);
+    byId('resolvedMetric').textContent = String(resolved);
+    byId('brierMetric').textContent = stats.brier === null ? '—' : stats.brier.toFixed(3);
+    byId('brierHelp').textContent = stats.count ? `分母：${stats.count} 条已复查的用户记录；合成示例排除；使用最后一个事前预测版本` : '无已复查的用户记录；合成示例不进入统计';
+  }
+
+  function renderDecision(item) {
+    const forecast = core.activeForecast(item);
+    const status = core.statusOf(item, today);
+    const card = el('article', { className: 'decision-card' });
+    const heading = el('div', {}, [el('h3', { text: item.title }), el('p', { text: item.question })]);
+    const badge = el('strong', { className: `status-${status}`, text: statusLabels[status] });
+    card.append(el('header', {}, [heading, badge]));
+    const dl = el('dl');
+    [['编号', item.id], ['来源', item.origin === 'synthetic' ? '合成示例（不进入真实校准）' : '用户录入'], ['事前概率', `${forecast.probability}%`], ['复查日期', forecast.dueDate], ['预测版本', `${item.forecastVersions.length} 个（旧版本保留）`], ['当时理由', forecast.reasons], ['事前证据', forecast.evidence || '未填写']].forEach(([term, description]) => dl.append(el('dt', { text: term }), el('dd', { text: description })));
+    if (item.review) {
+      dl.append(el('dt', { text: '实际结果' }), el('dd', { text: item.review.outcome === 1 ? '发生' : '未发生' }), el('dt', { text: '自报复查日期' }), el('dd', { text: item.review.reviewedOn }), el('dt', { text: '复查写入时间' }), el('dd', { text: item.review.reviewedAt }), el('dt', { text: '复查结论' }), el('dd', { text: item.review.summary }), el('dt', { text: '偏差分类' }), el('dd', { text: item.review.bias }), el('dt', { text: '下一次检验' }), el('dd', { text: item.review.nextTest || '未填写' }));
+    }
+    card.append(dl);
+    const buttons = el('div', { className: 'button-row' });
+    if (!item.review) {
+      const revise = el('button', { type: 'button', className: 'button-secondary', text: '修订事前预测' }); revise.addEventListener('click', () => beginRevision(item));
+      const review = el('button', { type: 'button', text: '追加实际结果' }); review.addEventListener('click', () => openReview(card, item));
+      buttons.append(revise, review);
+    }
+    const remove = el('button', { type: 'button', className: 'button-danger', text: '删除这条决策' }); remove.addEventListener('click', () => showDeleteConfirm(card, item));
+    buttons.append(remove); card.append(buttons); return card;
+  }
+
+  function renderList() {
+    const list = byId('decisionList'); list.replaceChildren();
+    const visible = core.filterDecisions(state.decisions, filter, today);
+    visible.forEach((item) => list.append(renderDecision(item)));
+    byId('emptyState').hidden = visible.length > 0;
+    byId('queueSummary').textContent = `当前显示 ${visible.length} 条；共 ${state.decisions.length} 条。`;
+  }
+
+  function renderLegacy() {
+    const list = byId('legacyList'); list.replaceChildren();
+    state.legacyNotes.forEach((note) => list.append(el('article', { className: 'legacy-note' }, [el('h3', { text: `旧版原文 · ${note.importedAt.slice(0, 10)}` }), el('strong', { text: '事前原文' }), el('pre', { text: note.before || '空白' }), el('strong', { text: '事后原文' }), el('pre', { text: note.after || '空白' })])));
+  }
+
+  function render() {
+    byId('todayBadge').textContent = validToday ? `基准日 ${today}（由地址参数固定；日历口径 Asia/Shanghai）` : `基准日 ${today}（日历口径 Asia/Shanghai）`;
+    byId('sampleBadge').hidden = !state.isSample;
+    renderMetrics(); renderList(); renderLegacy(); updateExportState();
+  }
+
+  function clearErrors() {
+    fieldIds.forEach((id) => { byId(id).setAttribute('aria-invalid', 'false'); byId(`${id}Error`).textContent = ''; });
+  }
+
+  function showFormError(id, message) {
+    byId(id).setAttribute('aria-invalid', 'true'); byId(`${id}Error`).textContent = message;
+  }
+
+  function formInput() {
+    return Object.fromEntries(fieldIds.map((id) => [id, byId(id).value]));
+  }
+
+  function resetForm() {
+    form.reset(); editingId = null; byId('cancelEdit').hidden = true; byId('newTitle').textContent = '记录事前预测'; byId('title').disabled = false; byId('question').disabled = false; clearErrors(); updateExportState();
+  }
+
+  function validateAndFocus(result) {
+    if (result.ok) return true;
+    const message = result.error;
+    const map = message.includes('概率') ? 'probability' : message.includes('日期') ? 'dueDate' : message.includes('标题') ? 'title' : message.includes('问题') ? 'question' : message.includes('证据') ? 'evidence' : 'reasons';
+    showFormError(map, message); byId(map).focus(); return false;
+  }
+
+  function beginRevision(item) {
+    const forecast = core.activeForecast(item); editingId = item.id;
+    byId('title').value = item.title; byId('question').value = item.question; byId('probability').value = forecast.probability; byId('dueDate').value = forecast.dueDate; byId('reasons').value = forecast.reasons; byId('evidence').value = forecast.evidence;
+    byId('title').disabled = true; byId('question').disabled = true; byId('cancelEdit').hidden = false; byId('newTitle').textContent = '修订事前预测'; byId('probability').focus(); updateExportState();
+  }
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault(); clearErrors(); const input = formInput(); const now = new Date().toISOString();
+    if (editingId) {
+      const index = state.decisions.findIndex((item) => item.id === editingId); const result = core.reviseForecast(state.decisions[index], input, now);
+      if (!validateAndFocus(result)) return; state.decisions[index] = result.value;
+    } else {
+      const result = core.createDecision(input, now, randomSuffix()); if (!validateAndFocus(result)) return; state.decisions.unshift(result.value);
+    }
+    state.isSample = state.decisions.some((item) => item.origin === 'synthetic'); resetForm(); persist('事前预测已保存。'); render();
+  });
+  fieldIds.forEach((id) => byId(id).addEventListener('input', updateExportState));
+  byId('cancelEdit').addEventListener('click', resetForm);
+
+  function openReview(card, item) {
+    card.querySelector('.review-form')?.remove();
+    const fragment = byId('reviewTemplate').content.cloneNode(true); const reviewForm = fragment.querySelector('form');
+    const bias = reviewForm.elements.bias; core.BIASES.forEach((value) => bias.append(el('option', { value, text: value })));
+    reviewForm.elements.reviewedOn.value = today;
+    reviewForm.addEventListener('submit', (event) => {
+      event.preventDefault(); const data = Object.fromEntries(new FormData(reviewForm)); const result = core.resolveDecision(item, data, today, new Date().toISOString());
+      if (!result.ok) { reviewForm.querySelector('.form-error').textContent = result.error; reviewForm.querySelector('select, input, textarea').focus(); return; }
+      const index = state.decisions.findIndex((candidate) => candidate.id === item.id); state.decisions[index] = result.value; state.isSample = state.decisions.some((candidate) => candidate.origin === 'synthetic'); persist('实际结果已追加。'); render();
+    });
+    reviewForm.querySelector('[data-cancel-review]').addEventListener('click', () => reviewForm.remove());
+    card.append(fragment); reviewForm.elements.outcome.focus();
+  }
+
+  function showDeleteConfirm(card, item) {
+    card.querySelector('.confirm-box')?.remove();
+    const box = el('div', { className: 'confirm-box' }, [el('p', { text: `将删除“${item.title}”以及全部预测版本和实际结果。此操作只在点击确认后发生。` })]);
+    const confirm = el('button', { type: 'button', className: 'button-danger', text: '确认删除这条决策' });
+    const cancel = el('button', { type: 'button', className: 'button-secondary', text: '取消删除' });
+    confirm.addEventListener('click', () => { state.decisions = state.decisions.filter((candidate) => candidate.id !== item.id); state.isSample = state.decisions.some((candidate) => candidate.origin === 'synthetic'); persist('决策已删除。'); render(); });
+    cancel.addEventListener('click', () => { box.remove(); card.querySelector('.button-danger')?.focus(); });
+    box.append(el('div', { className: 'button-row' }, [confirm, cancel])); card.append(box); confirm.focus();
+  }
+
+  document.querySelectorAll('[data-filter]').forEach((button) => button.addEventListener('click', () => {
+    filter = button.dataset.filter; document.querySelectorAll('[data-filter]').forEach((candidate) => candidate.setAttribute('aria-pressed', String(candidate === button))); renderList();
+  }));
+
+  function requestAction(kind, message, action, confirmText) {
+    pending = action; byId('pendingMessage').textContent = message; byId('confirmAction').textContent = confirmText; byId('pendingAction').hidden = false; byId('confirmAction').focus(); byId('pendingAction').dataset.kind = kind;
+  }
+  function closePending() { pending = null; pendingImport = null; byId('pendingAction').hidden = true; }
+  byId('confirmAction').addEventListener('click', () => { if (pending) pending(); closePending(); });
+  byId('cancelAction').addEventListener('click', () => { closePending(); byId('loadSample').focus(); });
+
+  byId('loadSample').addEventListener('click', () => {
+    const apply = () => { state = JSON.parse(JSON.stringify(globalThis.DECISION_REVIEW_SAMPLE)); resetForm(); persist('已载入合成示例。'); render(); };
+    if (hasUserData()) requestAction('sample', `将替换 ${state.decisions.length} 条决策、${state.legacyNotes.length} 条旧版原文以及当前表单草稿。`, apply, '确认载入合成示例'); else apply();
+  });
+  byId('clearAll').addEventListener('click', () => {
+    if (!hasUserData()) { setStatus('当前没有可清空的数据。'); return; }
+    requestAction('clear', `将清空 ${state.decisions.length} 条决策、${state.legacyNotes.length} 条旧版原文以及当前表单草稿。`, () => { state = core.emptyState(); resetForm(); persist('已清空本工具的本机数据。'); render(); }, '确认清空全部数据');
+  });
+
+  byId('importTrigger').addEventListener('click', () => byId('importFile').click());
+  byId('importFile').addEventListener('change', async () => {
+    const file = byId('importFile').files[0]; byId('importFile').value = ''; if (!file) return;
+    const parsed = core.parseBackup(await file.text(), today, new Date().toISOString());
+    if (!parsed.ok) { setStatus(`导入检查失败，现有数据未改变：${parsed.error}`, true); return; }
+    pendingImport = parsed.value;
+    requestAction('import', `校验通过：${pendingImport.decisions.length} 条决策、${pendingImport.legacyNotes.length} 条旧版原文。确认后才替换当前 ${state.decisions.length} 条决策和表单草稿。`, () => { state = pendingImport; resetForm(); persist('JSON 备份已导入。'); render(); }, '确认导入并替换');
+  });
+
+  function download(filename, type, content) {
+    const link = document.createElement('a'); const url = URL.createObjectURL(new Blob([content], { type })); link.href = url; link.download = filename; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+  byId('exportJson').addEventListener('click', () => download(`decision-review-${today}.json`, 'application/json', JSON.stringify(state, null, 2)));
+  byId('exportMarkdown').addEventListener('click', () => download(`decision-review-${today}.md`, 'text/markdown', core.exportMarkdown(state)));
+
+  byId('migrateLegacy').addEventListener('click', () => {
+    const note = JSON.parse(byId('legacyPanel').dataset.note); if (state.legacyNotes.some((item) => item.before === note.before && item.after === note.after)) { setStatus('同一份旧版原文已经导入。'); return; }
+    state.legacyNotes.push(note); state.isSample = state.decisions.some((item) => item.origin === 'synthetic'); persist('旧版原文已导入；未生成概率或实际结果。'); byId('legacyPanel').hidden = true; render();
+  });
+  byId('dismissLegacy').addEventListener('click', () => { byId('legacyPanel').hidden = true; });
+
+  load();
+})();
+
+</script>
+</body>
+</html>
