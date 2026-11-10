@@ -11,7 +11,7 @@
   let filter = 'all';
   let editingId = null;
   let pending = null;
-  let pendingImport = null;
+  let importRequest = 0;
   let storageFailed = false;
 
   const form = byId('decisionForm');
@@ -215,7 +215,7 @@
     const box = el('div', { className: 'confirm-box' }, [el('p', { text: `将删除“${item.title}”以及全部预测版本和实际结果。此操作只在点击确认后发生。` })]);
     const confirm = el('button', { type: 'button', className: 'button-danger', text: '确认删除这条决策' });
     const cancel = el('button', { type: 'button', className: 'button-secondary', text: '取消删除' });
-    confirm.addEventListener('click', () => { state.decisions = state.decisions.filter((candidate) => candidate.id !== item.id); state.isSample = state.decisions.some((candidate) => candidate.origin === 'synthetic'); persist('决策已删除。'); render(); });
+    confirm.addEventListener('click', () => { state.decisions = state.decisions.filter((candidate) => candidate.id !== item.id); if (editingId === item.id) resetForm(); state.isSample = state.decisions.some((candidate) => candidate.origin === 'synthetic'); persist('决策已删除。'); render(); });
     cancel.addEventListener('click', () => { box.remove(); card.querySelector('.button-danger')?.focus(); });
     box.append(el('div', { className: 'button-row' }, [confirm, cancel])); card.append(box); confirm.focus();
   }
@@ -225,17 +225,20 @@
   }));
 
   function requestAction(kind, message, action, confirmText) {
+    closePending();
     pending = action; byId('pendingMessage').textContent = message; byId('confirmAction').textContent = confirmText; byId('pendingAction').hidden = false; byId('confirmAction').focus(); byId('pendingAction').dataset.kind = kind;
   }
-  function closePending() { pending = null; pendingImport = null; byId('pendingAction').hidden = true; }
+  function closePending() { importRequest += 1; pending = null; byId('pendingAction').hidden = true; }
   byId('confirmAction').addEventListener('click', () => { if (pending) pending(); closePending(); });
   byId('cancelAction').addEventListener('click', () => { closePending(); byId('loadSample').focus(); });
 
   byId('loadSample').addEventListener('click', () => {
+    closePending();
     const apply = () => { state = JSON.parse(JSON.stringify(globalThis.DECISION_REVIEW_SAMPLE)); resetForm(); persist('已载入合成示例。'); render(); };
     if (hasUserData()) requestAction('sample', `将替换 ${state.decisions.length} 条决策、${state.legacyNotes.length} 条旧版原文以及当前表单草稿。`, apply, '确认载入合成示例'); else apply();
   });
   byId('clearAll').addEventListener('click', () => {
+    closePending();
     if (!hasUserData()) { setStatus('当前没有可清空的数据。'); return; }
     requestAction('clear', `将清空 ${state.decisions.length} 条决策、${state.legacyNotes.length} 条旧版原文以及当前表单草稿。`, () => { state = core.emptyState(); resetForm(); persist('已清空本工具的本机数据。'); render(); }, '确认清空全部数据');
   });
@@ -243,10 +246,17 @@
   byId('importTrigger').addEventListener('click', () => byId('importFile').click());
   byId('importFile').addEventListener('change', async () => {
     const file = byId('importFile').files[0]; byId('importFile').value = ''; if (!file) return;
-    const parsed = core.parseBackup(await file.text(), today, new Date().toISOString());
-    if (!parsed.ok) { setStatus(`导入检查失败，现有数据未改变：${parsed.error}`, true); return; }
-    pendingImport = parsed.value;
-    requestAction('import', `校验通过：${pendingImport.decisions.length} 条决策、${pendingImport.legacyNotes.length} 条旧版原文。确认后才替换当前 ${state.decisions.length} 条决策和表单草稿。`, () => { state = pendingImport; resetForm(); persist('JSON 备份已导入。'); render(); }, '确认导入并替换');
+    closePending();
+    const request = importRequest;
+    try {
+      const content = await file.text();
+      if (request !== importRequest) return;
+      const parsed = core.parseBackup(content, today, new Date().toISOString());
+      if (!parsed.ok) { setStatus(`导入检查失败，现有数据未改变：${parsed.error}`, true); return; }
+      requestAction('import', `校验通过：${parsed.value.decisions.length} 条决策、${parsed.value.legacyNotes.length} 条旧版原文。确认后才替换当前 ${state.decisions.length} 条决策和表单草稿。`, () => { state = parsed.value; resetForm(); persist('JSON 备份已导入。'); render(); }, '确认导入并替换');
+    } catch (_) {
+      if (request === importRequest) setStatus('导入读取失败，现有数据未改变。请重新选择可读取的 JSON 文件。', true);
+    }
   });
 
   function download(filename, type, content) {
