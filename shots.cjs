@@ -1,6 +1,8 @@
 'use strict';
 const path = require('node:path');
 const fs = require('node:fs');
+const os = require('node:os');
+const { pathToFileURL } = require('node:url');
 const assert = require('node:assert/strict');
 const { chromium } = require('/opt/homebrew/lib/node_modules/playwright');
 
@@ -8,17 +10,18 @@ async function launch() {
   try { return await chromium.launch({ headless: true }); }
   catch (first) {
     process.stderr.write(`默认 Chromium 不可用，改用本机无头入口：${first.message.split('\n')[0]}\n`);
-    return chromium.launch({ headless: true, executablePath: '~/.local/bin/chrome-headless-shell' });
+    return chromium.launch({ headless: true, executablePath: path.join(os.homedir(), '.local/bin/chrome-headless-shell') });
   }
 }
 
 (async () => {
   const browser = await launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+  await page.clock.setFixedTime(new Date('2026-10-29T12:00:00.000Z'));
   const errors = [];
   page.on('console', (message) => { if (message.type() === 'error') errors.push(`console: ${message.text()}`); });
   page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
-  const url = `file://${encodeURI(path.join(__dirname, 'index.html'))}?today=2026-10-29`;
+  const url = `${pathToFileURL(path.join(__dirname, process.argv[2] || 'index.html')).href}?today=2026-10-29`;
   await page.goto(url);
   await page.evaluate(() => localStorage.removeItem('decisionReviewWorkbench.v2'));
   await page.reload();
@@ -55,6 +58,10 @@ async function launch() {
 
   const realCard = page.locator('.decision-card').filter({ hasText: '真实记录：验收来源隔离' });
   await realCard.getByRole('button', { name: '追加实际结果' }).click();
+  await realCard.locator('[name=summary]').fill('结果未选择时不得保存。');
+  await realCard.getByRole('button', { name: '保存实际结果' }).click();
+  assert.match(await realCard.locator('.form-error').innerText(), /实际结果只能/);
+  assert.equal(await page.locator('#resolvedMetric').innerText(), '2');
   await realCard.locator('[name=outcome]').selectOption('1');
   await realCard.locator('[name=summary]').fill('界面保留了逐条来源。');
   await realCard.locator('[name=bias]').selectOption('未判断');
@@ -111,11 +118,61 @@ async function launch() {
   assert.match(await page.locator('.decision-card h3').innerText(), /<img/);
   assert.deepEqual(errors, []);
 
+  // Deleting the record being revised must also clear the editor's identity.
+  await page.getByRole('button', { name: '修订事前预测' }).click();
+  await page.getByRole('button', { name: '删除这条决策' }).click();
+  await page.getByRole('button', { name: '确认删除这条决策' }).click();
+  assert.equal(await page.locator('#cancelEdit').isHidden(), true);
+  assert.equal(await page.locator('#title').isEnabled(), true);
+  await page.locator('#title').fill('删除修订后仍可新增');
+  await page.locator('#question').fill('删除后是否可以保存新记录？');
+  await page.locator('#probability').fill('0');
+  await page.locator('#dueDate').fill('2026-11-01');
+  await page.locator('#reasons').fill('回归检查');
+  await page.getByRole('button', { name: '保存事前预测' }).click();
+  assert.equal(await page.locator('#totalMetric').innerText(), '1');
+
+  const backup = await page.evaluate(() => localStorage.getItem('decisionReviewWorkbench.v2'));
+  const upload = (name, content) => page.locator('#importFile').setInputFiles({ name, mimeType: 'application/json', buffer: Buffer.from(content) });
+  await upload('valid.json', backup);
+  await page.getByRole('button', { name: '确认导入并替换' }).waitFor();
+  await upload('invalid.json', '{bad');
+  await page.waitForFunction(() => document.getElementById('storageStatus').textContent.includes('导入检查失败'));
+  assert.equal(await page.locator('#pendingAction').isHidden(), true);
+  assert.equal(await page.locator('#totalMetric').innerText(), '1');
+
+  // Control file reads to exercise rejection and out-of-order completions.
+  await page.evaluate(() => {
+    window.originalFileText = File.prototype.text;
+    window.fileReads = [];
+    File.prototype.text = function () { return new Promise((resolve, reject) => window.fileReads.push({ resolve, reject })); };
+  });
+  await upload('unreadable.json', backup);
+  await page.evaluate(() => window.fileReads[0].reject(new Error('unreadable')));
+  await page.waitForFunction(() => document.getElementById('storageStatus').textContent.includes('导入读取失败'));
+  assert.equal(await page.locator('#totalMetric').innerText(), '1');
+  await upload('older.json', backup);
+  await upload('newer.json', backup);
+  await page.evaluate((content) => window.fileReads[2].resolve(content), JSON.stringify({ version: 2, isSample: false, decisions: [], legacyNotes: [] }));
+  await page.getByRole('button', { name: '确认导入并替换' }).waitFor();
+  await page.evaluate((content) => window.fileReads[1].resolve(content), backup);
+  assert.match(await page.locator('#pendingMessage').innerText(), /校验通过：0 条决策/);
+  await page.getByRole('button', { name: '确认导入并替换' }).click();
+  assert.equal(await page.locator('#totalMetric').innerText(), '0');
+  await upload('cancelled-by-sample.json', backup);
+  await page.getByRole('button', { name: '载入合成示例' }).click();
+  await page.evaluate((content) => window.fileReads[3].resolve(content), backup);
+  assert.equal(await page.locator('#pendingAction').isHidden(), true);
+  assert.equal(await page.locator('#totalMetric').innerText(), '2');
+  await page.evaluate(() => { File.prototype.text = window.originalFileText; });
+  assert.deepEqual(errors, []);
+
   const failedContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await failedContext.addInitScript(() => {
     Object.defineProperty(Storage.prototype, 'setItem', { configurable: true, value() { throw new DOMException('blocked', 'QuotaExceededError'); } });
   });
   const failedPage = await failedContext.newPage();
+  await failedPage.clock.setFixedTime(new Date('2026-10-29T12:00:00.000Z'));
   await failedPage.goto(url);
   await failedPage.locator('#title').fill('保存失败恢复测试');
   await failedPage.locator('#question').fill('存储不可用时，内存数据是否仍可导出？');

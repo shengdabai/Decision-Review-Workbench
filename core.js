@@ -130,6 +130,12 @@
     return `${prefix}-${now.replace(/\D/g, '').slice(0, 17)}-${random}`;
   }
 
+  function numericInput(value) {
+    if (typeof value === 'number') return value;
+    if (typeof value !== 'string' || !value.trim()) return NaN;
+    return Number(value);
+  }
+
   function createDecision(input, now = new Date().toISOString(), random = '0001') {
     const decision = {
       id: makeId('decision', now, random),
@@ -138,7 +144,7 @@
       question: String(input.question || '').trim(),
       createdAt: now,
       forecastVersions: [{
-        probability: Number(input.probability),
+        probability: numericInput(input.probability),
         dueDate: input.dueDate,
         reasons: String(input.reasons || '').trim(),
         evidence: String(input.evidence || '').trim(),
@@ -154,7 +160,7 @@
     if (decision.review !== null) return { ok: false, error: '已有结果的决策不能修改事前预测。' };
     const next = structuredCloneSafe(decision);
     next.forecastVersions.push({
-      probability: Number(input.probability),
+      probability: numericInput(input.probability),
       dueDate: input.dueDate,
       reasons: String(input.reasons || '').trim(),
       evidence: String(input.evidence || '').trim(),
@@ -170,7 +176,7 @@
     if (!isDate(effectiveToday) || !isIso(now)) return { ok: false, error: '复查基准时间无效。' };
     const next = structuredCloneSafe(decision);
     next.review = {
-      outcome: Number(input.outcome),
+      outcome: numericInput(input.outcome),
       reviewedOn: input.reviewedOn,
       reviewedAt: now,
       summary: String(input.summary || '').trim(),

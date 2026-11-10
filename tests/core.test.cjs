@@ -15,6 +15,19 @@ test('小数、越界概率被拒绝', () => {
   assert.equal(core.createDecision({ ...baseInput, probability: 50.5 }).ok, false);
   assert.equal(core.createDecision({ ...baseInput, probability: 101 }).ok, false);
 });
+test('空白和非数字类型不能被强制转换为零概率或未发生', () => {
+  for (const invalid of ['', '  ', null, undefined, false, true, [], [0], {}]) {
+    assert.equal(core.createDecision({ ...baseInput, probability: invalid }).ok, false);
+    assert.equal(core.reviseForecast(decision(), { ...baseInput, probability: invalid }).ok, false);
+    assert.equal(resolve(decision(), { outcome: invalid }).ok, false);
+  }
+});
+test('表单中的零概率和未发生字符串仍然有效', () => {
+  assert.equal(core.createDecision({ ...baseInput, probability: '0' }).ok, true);
+  const result = resolve(decision(), { outcome: '0' });
+  assert.equal(result.ok, true);
+  assert.equal(result.value.review.outcome, 0);
+});
 test('不存在的日期被拒绝', () => assert.equal(core.createDecision({ ...baseInput, dueDate: '2026-02-30' }).ok, false));
 test('上海日历日处理 UTC 次日边界', () => assert.equal(core.calendarDay('2026-10-29T16:30:00.000Z'), '2026-10-30'));
 test('修改预测新增版本并保留原预测', () => {
